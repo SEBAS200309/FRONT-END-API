@@ -1,4 +1,7 @@
 // app.js
+//Definicion URL API REST 
+
+const API_BASE = 'https://blockchainticketapi-production.up.railway.app/api_rest/v1/WEB3_Ticketer';
 
 // 1. Definición de los esquemas de tabla (idéntico a tu versión original)
 const tableSchemas = {
@@ -140,23 +143,25 @@ document.addEventListener('DOMContentLoaded', init);
 async function loadTableData(tableName) {
   showLoading();
 
-  // --- LLAMADA A LA API (comentada) ---
-  /*
   try {
-    const res = await fetch(`/api/${tableName}`);
-    if (!res.ok) throw new Error(res.statusText);
-    const data = await res.json();
+    // Hacemos GET a /{tableName}, p.ej. /bands, /cities, etc.
+    const endpoint = tableName.replace(/_/g, '-');
+    const url = `${API_BASE}/${tableName}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    // La API devuelve un Page<Entidad>, con .content para los registros
+    const json = await res.json();
+    const data = Array.isArray(json.content) ? json.content : [];
     renderTable(data, tableSchemas[tableName]);
   } catch (err) {
-    showToast(`Error cargando ${tableName}: ${err}`, 'error');
+    console.error('Error cargando datos de', tableName, err);
+    showToast(`Error cargando ${formatTableName(tableName)}: ${err.message}`, 'error');
+    // Caída de back-off a mockData para no romper la UI
+    const fallback = mockData[tableName] || [];
+    renderTable(fallback, tableSchemas[tableName]);
+  } finally {
+    hideLoading();
   }
-  */
-
-  // Uso de datos mock por ahora
-  const data = mockData[tableName] || [];
-  renderTable(data, tableSchemas[tableName]);
-
-  hideLoading();
 }
 
 // Función única para renderizar encabezados + filas + tarjetas
