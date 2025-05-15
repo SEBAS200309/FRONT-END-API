@@ -37,7 +37,7 @@ const tableSchemas = {
     { name: 'id', type: 'number', primary: true, editable: false },
     { name: 'band_id', type: 'select', relation: 'bands', relationLabel: 'band_name' },
     { name: 'stadium_id', type: 'select', relation: 'stadiums', relationLabel: 'stadium_name' },
-    { name: 'event_date', type: 'datetime-local', required: true },
+    { name: 'eventDate', type: 'datetime-local', required: true },
     { name: 'category_id', type: 'select', relation: 'ticket_categories', relationLabel: 'category_name' }
   ]
 };
@@ -191,22 +191,35 @@ function generateTableRows(data, schema) {
   tableBody.innerHTML = '';
   data.forEach(record => {
     const tr = document.createElement('tr');
+
     schema.forEach(field => {
-      if (field.name !== 'id' || field.visible) {
-        const td = document.createElement('td');
-        let displayValue = record[field.name];
-        if (field.type === 'select') {
+      const td = document.createElement('td');
+      let displayValue = record[field.name];
+
+      if (field.type === 'select') {
+        const val = record[field.name];
+        if (val && typeof val === 'object') {
+          displayValue = val[field.relationLabel];
+        } else {
           const rel = mockData[field.relation];
-          const relRec = rel?.find(r => r.id === record[field.name]);
+          const relRec = rel?.find(r => r.id === val);
           displayValue = relRec ? relRec[field.relationLabel] : '';
-        } else if (field.type === 'datetime-local') {
-          displayValue = new Date(record[field.name]).toLocaleString();
-        } else if (field.name === 'base_price') {
-          displayValue = '$' + parseFloat(record[field.name]).toFixed(2);
         }
-        td.textContent = displayValue || '';
-        tr.appendChild(td);
+      } else if (field.type === 'datetime-local') {
+        const raw = record[field.name]; // form "dd/MM/yyyy HH:mm:ss"
+        const [datePart, timePart] = raw.split(' ');
+        const [dd, MM, yyyy] = datePart.split('/');
+        const [HH, mm, ss] = timePart.split(':');
+        const parsed = new Date(yyyy, Number(MM)-1, dd, HH, mm, ss);
+        displayValue = isNaN(parsed)
+          ? 'Invalid Date'
+          : parsed.toLocaleString();
+      } else if (field.name === 'base_price') {
+        displayValue = '$' + parseFloat(record[field.name]).toFixed(2);
       }
+
+      td.textContent = displayValue || '';
+      tr.appendChild(td);
     });
     // Actions
     const actionsTd = document.createElement('td');
