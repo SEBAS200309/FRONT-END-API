@@ -8,7 +8,7 @@ const tableSchemas = {
   bands: [
     { name: 'id', type: 'number', primary: true, editable: false },
     { name: 'band_name', type: 'text', required: true },
-    { name: 'genre_id', type: 'select', relation: 'music_genres', relationLabel: 'genre_name' }
+    { name: 'genre_id', type: 'select', relation: 'music-genres', relationLabel: 'genre_name' }
   ],
   cities: [
     { name: 'id', type: 'number', primary: true, editable: false },
@@ -19,7 +19,7 @@ const tableSchemas = {
     { name: 'id', type: 'number', primary: true, editable: false },
     { name: 'country_name', type: 'text', required: true }
   ],
-  music_genres: [
+  'music-genres': [
     { name: 'id', type: 'number', primary: true, editable: false },
     { name: 'genre_name', type: 'text', required: true }
   ],
@@ -28,7 +28,7 @@ const tableSchemas = {
     { name: 'stadium_name', type: 'text', required: true },
     { name: 'city_id', type: 'select', relation: 'cities', relationLabel: 'city_name' }
   ],
-  ticket_categories: [
+  'ticket-categories': [
     { name: 'id', type: 'number', primary: true, editable: false },
     { name: 'category_name', type: 'text', required: true },
     { name: 'base_price', type: 'number', required: true }
@@ -38,7 +38,7 @@ const tableSchemas = {
     { name: 'band_id', type: 'select', relation: 'bands', relationLabel: 'band_name' },
     { name: 'stadium_id', type: 'select', relation: 'stadiums', relationLabel: 'stadium_name' },
     { name: 'eventDate', type: 'datetime-local', required: true },
-    { name: 'category_id', type: 'select', relation: 'ticket_categories', relationLabel: 'category_name' }
+    { name: 'category_id', type: 'select', relation: 'ticket-categories', relationLabel: 'category_name' }
   ]
 };
 
@@ -65,7 +65,7 @@ const mockData = {
     { id: 4, country_name: "Argentina" },
     { id: 5, country_name: "Mexico" }
   ],
-  music_genres: [
+  'music-genres': [
     { id: 1, genre_name: "Rock" },
     { id: 2, genre_name: "Pop" },
     { id: 3, genre_name: "Jazz" },
@@ -80,7 +80,7 @@ const mockData = {
     { id: 4, stadium_name: "Estadio Monumental", city_id: 4 },
     { id: 5, stadium_name: "Estadio Azteca", city_id: 5 }
   ],
-  ticket_categories: [
+  'ticket-categories': [
     { id: 1, category_name: "General", base_price: 50.00 },
     { id: 2, category_name: "VIP", base_price: 120.00 },
     { id: 3, category_name: "Preferencial", base_price: 80.00 },
