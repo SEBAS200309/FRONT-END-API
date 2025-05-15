@@ -232,28 +232,34 @@ function generateTableRows(data, schema) {
 
 function generateMobileCards(data, schema) {
   mobileCards.innerHTML = '';
+
   data.forEach(record => {
     const card = document.createElement('div');
     card.className = 'data-card';
-    // Título
-    const titleField = schema.find(f => f.name !== 'id') || schema[0];
+
+    // Título de la tarjeta
+    const titleField = schema.find(f => f.name !== 'id') || { name: 'id' };
     const cardTitle = document.createElement('div');
     cardTitle.className = 'data-card-title';
     cardTitle.textContent = record[titleField.name];
     card.appendChild(cardTitle);
-    // Campos
+
+    // Campos de la tarjeta
     schema.forEach(field => {
       if (field.name !== 'id' && field.name !== titleField.name) {
-        const row = document.createElement('div');
-        row.className = 'data-card-field';
+        const fieldRow = document.createElement('div');
+        fieldRow.className = 'data-card-field';
+
         const label = document.createElement('div');
         label.className = 'data-card-label';
         label.textContent = formatFieldName(field.name);
+        fieldRow.appendChild(label);
+
         const value = document.createElement('div');
         let displayValue = record[field.name];
-        if (field.type === 'select') {
-          const rel = mockData[field.relation];
-          const relRec = rel?.find(r => r.id === record[field.name]);
+        if (field.type === 'select' && field.relation) {
+          const relData = mockData[field.relation] || [];
+          const relRec = relData.find(r => r.id === record[field.name]);
           displayValue = relRec ? relRec[field.relationLabel] : '';
         } else if (field.type === 'datetime-local') {
           displayValue = new Date(record[field.name]).toLocaleString();
@@ -261,27 +267,37 @@ function generateMobileCards(data, schema) {
           displayValue = '$' + parseFloat(record[field.name]).toFixed(2);
         }
         value.textContent = displayValue || '';
-        row.appendChild(label);
-        row.appendChild(value);
-        card.appendChild(row);
+        fieldRow.appendChild(value);
+
+        card.appendChild(fieldRow);
       }
     });
-    // Acciones
+
+    // Acciones (edit + delete)
     const actions = document.createElement('div');
     actions.className = 'data-card-actions';
-    const editBtn2 = editBtn.cloneNode(true);
-    editBtn2.addEventListener('click', () => {
+
+    // Botón Editar
+    const editBtn = document.createElement('button');
+    editBtn.className = 'action-btn edit-btn';
+    editBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+    editBtn.addEventListener('click', () => {
       currentAction = 'edit';
       currentRecord = record;
       showRecordModal();
     });
-    const delBtn2 = delBtn.cloneNode(true);
-    delBtn2.addEventListener('click', () => {
+    actions.appendChild(editBtn);
+
+    // Botón Eliminar
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'action-btn delete-btn';
+    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+    deleteBtn.addEventListener('click', () => {
       deleteRecordId = record.id;
       deleteModal.show();
     });
-    actions.appendChild(editBtn2);
-    actions.appendChild(delBtn2);
+    actions.appendChild(deleteBtn);
+
     card.appendChild(actions);
     mobileCards.appendChild(card);
   });
