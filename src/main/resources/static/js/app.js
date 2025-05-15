@@ -174,13 +174,22 @@ function renderTable(data, schema) {
 // 6. Generadores de UI (idénticos a tu versión original)
 function generateTableHeaders(schema) {
   tableHeaders.innerHTML = '';
-  schema.forEach(field => {
-    if (field.name !== 'id' || field.visible) {
+
+  // 1) Cabecera para ID
+  const idTh = document.createElement('th');
+  idTh.textContent = 'ID';
+  tableHeaders.appendChild(idTh);
+
+  // 2) Cabeceras para el resto de campos, excepto id
+  schema
+    .filter(field => field.name !== 'id')
+    .forEach(field => {
       const th = document.createElement('th');
       th.textContent = formatFieldName(field.name);
       tableHeaders.appendChild(th);
-    }
-  });
+    });
+
+  // 3) Cabecera para Actions
   const actionsHeader = document.createElement('th');
   actionsHeader.textContent = 'Actions';
   actionsHeader.style.width = '120px';
@@ -189,41 +198,54 @@ function generateTableHeaders(schema) {
 
 function generateTableRows(data, schema) {
   tableBody.innerHTML = '';
+
   data.forEach(record => {
     const tr = document.createElement('tr');
 
-    schema.forEach(field => {
-      const td = document.createElement('td');
-      let displayValue = record[field.name];
+    // 1) Celda para ID
+    const idTd = document.createElement('td');
+    idTd.textContent = record.id;
+    tr.appendChild(idTd);
 
-      if (field.type === 'select') {
-        const val = record[field.name];
-        if (val && typeof val === 'object') {
-          displayValue = val[field.relationLabel];
+    // 2) Celdas para el resto de campos (misma lógica que tenías)
+    schema
+      .filter(field => field.name !== 'id')
+      .forEach(field => {
+        const td = document.createElement('td');
+        let displayValue = '';
+
+        const apiField = field.apiName || field.name;
+        const raw = record[apiField];
+
+        if (field.type === 'select') {
+          if (raw && typeof raw === 'object') {
+            displayValue = raw[field.relationLabel];
+          } else {
+            const relArr = mockData[field.relation] || [];
+            const relRec = relArr.find(r => r.id === raw);
+            displayValue = relRec ? relRec[field.relationLabel] : '';
+          }
+        } else if (field.type === 'datetime-local') {
+          if (typeof raw === 'string') {
+            const [datePart, timePart] = raw.split(' ');
+            const [dd, MM, yyyy] = datePart.split('/');
+            const [HH, mm, ss] = timePart.split(':');
+            const dt = new Date(yyyy, Number(MM) - 1, dd, HH, mm, ss);
+            displayValue = isNaN(dt) ? 'Invalid Date' : dt.toLocaleString();
+          }
+        } else if (field.name === 'base_price') {
+          displayValue = '$' + parseFloat(raw).toFixed(2);
         } else {
-          const rel = mockData[field.relation];
-          const relRec = rel?.find(r => r.id === val);
-          displayValue = relRec ? relRec[field.relationLabel] : '';
+          displayValue = raw != null ? raw : '';
         }
-      } else if (field.type === 'datetime-local') {
-        const raw = record[field.name]; // form "dd/MM/yyyy HH:mm:ss"
-        const [datePart, timePart] = raw.split(' ');
-        const [dd, MM, yyyy] = datePart.split('/');
-        const [HH, mm, ss] = timePart.split(':');
-        const parsed = new Date(yyyy, Number(MM)-1, dd, HH, mm, ss);
-        displayValue = isNaN(parsed)
-          ? 'Invalid Date'
-          : parsed.toLocaleString();
-      } else if (field.name === 'base_price') {
-        displayValue = '$' + parseFloat(record[field.name]).toFixed(2);
-      }
 
-      td.textContent = displayValue || '';
-      tr.appendChild(td);
-    });
-    // Actions
+        td.textContent = displayValue;
+        tr.appendChild(td);
+      });
+
+    // 3) Columna de acciones
     const actionsTd = document.createElement('td');
-    // Edit
+    // — Edit button —
     const editBtn = document.createElement('button');
     editBtn.className = 'action-btn edit-btn';
     editBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
@@ -233,7 +255,7 @@ function generateTableRows(data, schema) {
       showRecordModal();
     });
     actionsTd.appendChild(editBtn);
-    // Delete
+    // — Delete button —
     const delBtn = document.createElement('button');
     delBtn.className = 'action-btn delete-btn';
     delBtn.innerHTML = '<i class="fas fa-trash"></i>';
@@ -247,6 +269,7 @@ function generateTableRows(data, schema) {
     tableBody.appendChild(tr);
   });
 }
+// 6. Generación de tarjetas para vista móvil
 
 function generateMobileCards(data, schema) {
   mobileCards.innerHTML = '';
