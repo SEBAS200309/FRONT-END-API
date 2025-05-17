@@ -2,6 +2,7 @@
 //Definicion URL API REST 
 
 const API_BASE = 'https://blockchainticketapi-production.up.railway.app/api_rest/v1/WEB3_Ticketer';
+const CRUD_BASE = `${API_BASE}/BandCRUD`;
 
 // 1. Definición de los esquemas de tabla (idéntico a tu versión original)
 const tableSchemas = {
@@ -352,6 +353,17 @@ function showRecordModal() {
     ? `Create New ${formatTableName(currentTable, false)}`
     : `Edit ${formatTableName(currentTable, false)}`;
   recordForm.innerHTML = '';
+    if (currentAction === 'edit') {
+    // 1) Carga datos reales de la API
+    try {
+      const res = await fetch(`${CRUD_BASE}/${currentRecord.id}`);
+      if (!res.ok) throw new Error(res.statusText);
+      currentRecord = await res.json(); // asume devuelve BandDTO
+    } catch (err) {
+      showToast(`Error cargando registro: ${err}`, 'error');
+      return;
+    }
+  }
   schema.forEach(field => {
     if (field.name === 'id' && currentAction === 'create') return;
     const formGroup = document.createElement('div');
@@ -400,47 +412,84 @@ function showRecordModal() {
 }
 
 // 8. Guardar y eliminar registros (usando mockData)
-function saveRecord() {
+async function saveRecord() {
   if (!validateForm()) {
     showToast('Please fill in all required fields', 'error');
     return;
   }
   showLoading();
-  const formData = {};
-  tableSchemas[currentTable].forEach(field => {
-    const input = document.getElementById(`field-${field.name}`);
-    if (input) {
-      formData[field.name] = field.type === 'number'
-        ? parseFloat(input.value) : input.value;
-    }
-  });
-  setTimeout(() => {
+
+  // 1) Construir payload a partir del formulario
+  const payload = {};
+  tableSchemas[currentTable]
+    // omitimos id en creación
+    .filter(field => !(field.name === 'id' && currentAction === 'create'))
+    .forEach(field => {
+      const input = document.getElementById(`field-${field.name}`);
+      if (input) {
+        payload[field.name] = field.type === 'number'
+          ? parseFloat(input.value)
+          : input.value;
+      }
+    });
+
+  try {
+    let res;
     if (currentAction === 'create') {
-      const maxId = Math.max(0, ...mockData[currentTable].map(r => r.id));
-      formData.id = maxId + 1;
-      mockData[currentTable].push(formData);
-      showToast(`New ${formatTableName(currentTable,false)} created!`, 'success');
+      // POST a /BandCRUD
+      res = await fetch(`${CRUD_BASE}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
     } else {
-      const idx = mockData[currentTable].findIndex(r => r.id === currentRecord.id);
-      mockData[currentTable][idx] = { ...formData };
-      showToast(`${formatTableName(currentTable,false)} updated!`, 'success');
+      // PUT a /BandCRUD/{id}
+      res = await fetch(`${CRUD_BASE}/${currentRecord.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
     }
-    loadTableData(currentTable);
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+
+    showToast(
+      currentAction === 'create'
+        ? 'Record created successfully!'
+        : 'Record updated successfully!',
+      'success'
+    );
+
+    // 2) Refrescar tabla desde la API
+    await loadTableData(currentTable);
+
+    // 3) Cerrar modal
     recordModal.hide();
+
+  } catch (err) {
+    console.error('Error saving record:', err);
+    showToast(`Error saving record: ${err.message}`, 'error');
+
+  } finally {
     hideLoading();
-  }, 500);
+  }
 }
 
-function deleteRecord() {
+async function deleteRecord() {
   showLoading();
-  setTimeout(() => {
-    const idx = mockData[currentTable].findIndex(r => r.id === deleteRecordId);
-    if (idx !== -1) mockData[currentTable].splice(idx,1);
-    showToast(`${formatTableName(currentTable,false)} deleted!`, 'success');
+  try {
+    const res = await fetch(`${CRUD_BASE}/${deleteRecordId}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error(res.statusText);
+    showToast('Band deleted successfully!', 'success');
     loadTableData(currentTable);
     deleteModal.hide();
+  } catch (err) {
+    showToast(`Error borrando: ${err}`, 'error');
+  } finally {
     hideLoading();
-  }, 500);
+  }
 }
 
 // 9. Validaciones, toasts y helpers
