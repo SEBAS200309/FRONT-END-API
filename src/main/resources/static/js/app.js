@@ -1,11 +1,14 @@
 // app.js
+//Definicion URL API REST 
+
+const API_BASE = 'https://blockchainticketapi-production.up.railway.app/api_rest/v1/WEB3_Ticketer';
 
 // 1. Definición de los esquemas de tabla (idéntico a tu versión original)
 const tableSchemas = {
   bands: [
     { name: 'id', type: 'number', primary: true, editable: false },
     { name: 'band_name', type: 'text', required: true },
-    { name: 'genre_id', type: 'select', relation: 'music_genres', relationLabel: 'genre_name' }
+    { name: 'genre_id', type: 'select', relation: 'music-genres', relationLabel: 'genre_name' }
   ],
   cities: [
     { name: 'id', type: 'number', primary: true, editable: false },
@@ -16,7 +19,7 @@ const tableSchemas = {
     { name: 'id', type: 'number', primary: true, editable: false },
     { name: 'country_name', type: 'text', required: true }
   ],
-  music_genres: [
+  'music-genres': [
     { name: 'id', type: 'number', primary: true, editable: false },
     { name: 'genre_name', type: 'text', required: true }
   ],
@@ -25,7 +28,7 @@ const tableSchemas = {
     { name: 'stadium_name', type: 'text', required: true },
     { name: 'city_id', type: 'select', relation: 'cities', relationLabel: 'city_name' }
   ],
-  ticket_categories: [
+  'ticket-categories': [
     { name: 'id', type: 'number', primary: true, editable: false },
     { name: 'category_name', type: 'text', required: true },
     { name: 'base_price', type: 'number', required: true }
@@ -34,8 +37,8 @@ const tableSchemas = {
     { name: 'id', type: 'number', primary: true, editable: false },
     { name: 'band_id', type: 'select', relation: 'bands', relationLabel: 'band_name' },
     { name: 'stadium_id', type: 'select', relation: 'stadiums', relationLabel: 'stadium_name' },
-    { name: 'event_date', type: 'datetime-local', required: true },
-    { name: 'category_id', type: 'select', relation: 'ticket_categories', relationLabel: 'category_name' }
+    { name: 'eventDate', type: 'datetime-local', required: true },
+    { name: 'category_id', type: 'select', relation: 'ticket-categories', relationLabel: 'category_name' }
   ]
 };
 
@@ -62,7 +65,7 @@ const mockData = {
     { id: 4, country_name: "Argentina" },
     { id: 5, country_name: "Mexico" }
   ],
-  music_genres: [
+  'music-genres': [
     { id: 1, genre_name: "Rock" },
     { id: 2, genre_name: "Pop" },
     { id: 3, genre_name: "Jazz" },
@@ -77,7 +80,7 @@ const mockData = {
     { id: 4, stadium_name: "Estadio Monumental", city_id: 4 },
     { id: 5, stadium_name: "Estadio Azteca", city_id: 5 }
   ],
-  ticket_categories: [
+  'ticket-categories': [
     { id: 1, category_name: "General", base_price: 50.00 },
     { id: 2, category_name: "VIP", base_price: 120.00 },
     { id: 3, category_name: "Preferencial", base_price: 80.00 },
@@ -140,23 +143,25 @@ document.addEventListener('DOMContentLoaded', init);
 async function loadTableData(tableName) {
   showLoading();
 
-  // --- LLAMADA A LA API (comentada) ---
-  /*
   try {
-    const res = await fetch(`/api/${tableName}`);
-    if (!res.ok) throw new Error(res.statusText);
-    const data = await res.json();
+    // Hacemos GET a /{tableName}, p.ej. /bands, /cities, etc.
+    const endpoint = tableName.replace(/_/g, '-');
+    const url = `${API_BASE}/${tableName}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    // La API devuelve un Page<Entidad>, con .content para los registros
+    const json = await res.json();
+    const data = Array.isArray(json.content) ? json.content : [];
     renderTable(data, tableSchemas[tableName]);
   } catch (err) {
-    showToast(`Error cargando ${tableName}: ${err}`, 'error');
+    console.error('Error cargando datos de', tableName, err);
+    showToast(`Error cargando ${formatTableName(tableName)}: ${err.message}`, 'error');
+    // Caída de back-off a mockData para no romper la UI
+    const fallback = mockData[tableName] || [];
+    renderTable(fallback, tableSchemas[tableName]);
+  } finally {
+    hideLoading();
   }
-  */
-
-  // Uso de datos mock por ahora
-  const data = mockData[tableName] || [];
-  renderTable(data, tableSchemas[tableName]);
-
-  hideLoading();
 }
 
 // Función única para renderizar encabezados + filas + tarjetas
@@ -169,13 +174,22 @@ function renderTable(data, schema) {
 // 6. Generadores de UI (idénticos a tu versión original)
 function generateTableHeaders(schema) {
   tableHeaders.innerHTML = '';
-  schema.forEach(field => {
-    if (field.name !== 'id' || field.visible) {
+
+  // 1) Cabecera para ID
+  const idTh = document.createElement('th');
+  idTh.textContent = 'ID';
+  tableHeaders.appendChild(idTh);
+
+  // 2) Cabeceras para el resto de campos, excepto id
+  schema
+    .filter(field => field.name !== 'id')
+    .forEach(field => {
       const th = document.createElement('th');
       th.textContent = formatFieldName(field.name);
       tableHeaders.appendChild(th);
-    }
-  });
+    });
+
+  // 3) Cabecera para Actions
   const actionsHeader = document.createElement('th');
   actionsHeader.textContent = 'Actions';
   actionsHeader.style.width = '120px';
@@ -184,28 +198,54 @@ function generateTableHeaders(schema) {
 
 function generateTableRows(data, schema) {
   tableBody.innerHTML = '';
+
   data.forEach(record => {
     const tr = document.createElement('tr');
-    schema.forEach(field => {
-      if (field.name !== 'id' || field.visible) {
+
+    // 1) Celda para ID
+    const idTd = document.createElement('td');
+    idTd.textContent = record.id;
+    tr.appendChild(idTd);
+
+    // 2) Celdas para el resto de campos (misma lógica que tenías)
+    schema
+      .filter(field => field.name !== 'id')
+      .forEach(field => {
         const td = document.createElement('td');
-        let displayValue = record[field.name];
+        let displayValue = '';
+
+        const apiField = field.apiName || field.name;
+        const raw = record[apiField];
+
         if (field.type === 'select') {
-          const rel = mockData[field.relation];
-          const relRec = rel?.find(r => r.id === record[field.name]);
-          displayValue = relRec ? relRec[field.relationLabel] : '';
+          if (raw && typeof raw === 'object') {
+            displayValue = raw[field.relationLabel];
+          } else {
+            const relArr = mockData[field.relation] || [];
+            const relRec = relArr.find(r => r.id === raw);
+            displayValue = relRec ? relRec[field.relationLabel] : '';
+          }
         } else if (field.type === 'datetime-local') {
-          displayValue = new Date(record[field.name]).toLocaleString();
+          if (typeof raw === 'string') {
+            const [datePart, timePart] = raw.split(' ');
+            const [dd, MM, yyyy] = datePart.split('/');
+            const [HH, mm, ss] = timePart.split(':');
+            const dt = new Date(yyyy, Number(MM) - 1, dd, HH, mm, ss);
+            displayValue = isNaN(dt) ? 'Invalid Date' : dt.toLocaleString();
+          }
         } else if (field.name === 'base_price') {
-          displayValue = '$' + parseFloat(record[field.name]).toFixed(2);
+          displayValue = '$' + parseFloat(raw).toFixed(2);
+        } else {
+          displayValue = raw != null ? raw : '';
         }
-        td.textContent = displayValue || '';
+
+        td.textContent = displayValue;
         tr.appendChild(td);
-      }
-    });
-    // Actions
+      });
+
+    // 3) Columna de acciones
     const actionsTd = document.createElement('td');
-    // Edit
+    // — Edit button —
     const editBtn = document.createElement('button');
     editBtn.className = 'action-btn edit-btn';
     editBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
@@ -215,7 +255,7 @@ function generateTableRows(data, schema) {
       showRecordModal();
     });
     actionsTd.appendChild(editBtn);
-    // Delete
+    // — Delete button —
     const delBtn = document.createElement('button');
     delBtn.className = 'action-btn delete-btn';
     delBtn.innerHTML = '<i class="fas fa-trash"></i>';
@@ -229,6 +269,7 @@ function generateTableRows(data, schema) {
     tableBody.appendChild(tr);
   });
 }
+// 6. Generación de tarjetas para vista móvil
 
 function generateMobileCards(data, schema) {
   mobileCards.innerHTML = '';
