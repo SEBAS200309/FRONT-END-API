@@ -147,7 +147,11 @@ async function loadTableData(tableName) {
   try {
     // Hacemos GET a /{tableName}, p.ej. /bands, /cities, etc.
     const endpoint = tableName.replace(/_/g, '-');
-    const url = `${API_BASE}/${tableName}`;
+
+    // Redirigir a BandCRUD si corresponde
+    const isBand = tableName.toLowerCase() === 'band';
+    const url = isBand ? `${CRUD_BASE}` : `${API_BASE}/${endpoint}`;
+
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     // La API devuelve un Page<Entidad>, con .content para los registros
@@ -346,7 +350,7 @@ function generateMobileCards(data, schema) {
 }
 
 // 7. Modal form dinámico (idéntico al original)
-function showRecordModal() {
+async function showRecordModal() {
   const schema = tableSchemas[currentTable];
   const titleEl = document.getElementById('modal-title');
   titleEl.textContent = currentAction === 'create'
